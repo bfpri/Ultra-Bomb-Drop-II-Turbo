@@ -21,6 +21,7 @@ const int FOO_DOWN =4;
 #define COLORKEY 255, 0, 255
 
 //The surfaces
+SDL_Surface *bomb=NULL;
 SDL_Surface *foo = NULL;
 SDL_Surface *dots = NULL;
 SDL_Surface *screen = NULL;
@@ -29,13 +30,15 @@ int alpha = SDL_ALPHA_OPAQUE;
 const int FOO_WIDTH = 48;
 const int FOO_HEIGHT = 58;
 
+const int BOMB_WIDTH= 27;
+const int BOMB_HEIGHT=27;
 //The event structure
 SDL_Event event;
 
  Level* lvl = new Level();
 //The portions of the sprite map to be blitted
 SDL_Rect clip[ 4 ];
-
+SDL_Rect bombclip[4];
 //The areas of the sprite sheet
 SDL_Rect clipsRight[ 4 ];
 SDL_Rect clipsLeft[ 4 ];
@@ -144,7 +147,11 @@ bool load_files()
     {
         return false;
     }
-    
+    bomb=load_image("BMLT.gif");
+	if( bomb == NULL )
+    {
+        return false;
+    }
     //If eveything loaded fine
     return true;
 }
@@ -234,7 +241,27 @@ void set_clips()
     clipsDown[ 3 ].h = FOO_HEIGHT;
 
 
+	bombclip[0].x=387;
+	bombclip[0].y=49;
+	bombclip[ 0 ].w = BOMB_WIDTH;
+    bombclip[ 0 ].h = BOMB_HEIGHT;
 
+	bombclip[ 1 ].x = 387+BOMB_WIDTH;
+    bombclip[ 1 ].y = 49;
+    bombclip[ 1 ].w = BOMB_WIDTH;
+    bombclip[ 1 ].h = BOMB_HEIGHT;
+
+    bombclip[ 2 ].x = 387+BOMB_WIDTH * 2;
+    bombclip[ 2 ].y = 49;
+    bombclip[ 2 ].w = BOMB_WIDTH;
+    bombclip[ 2 ].h = BOMB_HEIGHT;
+	
+	bombclip[ 3 ].x = 412;
+    bombclip[ 3 ].y = 108;
+    bombclip[ 3 ].w = BOMB_WIDTH;
+    bombclip[ 3 ].h = BOMB_HEIGHT;
+
+		
 
 }
 void clean_up()
@@ -246,9 +273,11 @@ void clean_up()
     //Quit SDL
     SDL_Quit();
 }
+
 class Foo
 {
-    private:
+
+protected:
     //The offset
     int offSet;
 	int yoffset;
@@ -257,14 +286,17 @@ class Foo
 	int yvelocity;
     //Its current frame
     int frame;
-
+	
     //Its animation status
     int status;
-
+	
     public:
+		int getstatus();
+		int getoffset();
+	int getyoffset();
     //Initializes the variables
     Foo();
-
+	void makebomb();
     //Handles input
     void handle_events();
 
@@ -274,9 +306,15 @@ class Foo
     //Shows the stick figure
     void show();
 };
-
-
-
+int Foo::getstatus(){
+return status;
+}
+int Foo::getoffset(){
+return offSet;
+}
+int Foo::getyoffset(){
+return yoffset;
+}
 Foo::Foo()
 {
     //Initialize movement variables
@@ -306,6 +344,83 @@ Foo::Foo()
     status = FOO_RIGHT;
 }
 
+class Bomb:public Foo
+{
+private:
+	int offSet;
+	int yoffset;
+	int frame;
+	int spacepressed;
+	int counter;
+public: void makebomb(Foo foo);
+		Bomb();
+		void handle_events();
+		void showbomb();
+
+
+
+};
+ Bomb::Bomb(){
+offSet=Foo::offSet;
+yoffset=0;
+frame=0;
+spacepressed=0;
+counter=0;
+}
+
+void Bomb::makebomb( Foo foo){
+	counter++;
+	if(counter==1){
+	if( foo.getstatus() == FOO_RIGHT )
+    {
+        offSet=foo.getoffset()+FOO_WIDTH;
+		yoffset=foo.getyoffset()+FOO_HEIGHT-BOMB_HEIGHT+2;
+	
+    }
+    else if( foo.getstatus() == FOO_LEFT )
+    {
+		offSet=foo.getoffset()-10;
+		yoffset=foo.getyoffset()+FOO_HEIGHT-BOMB_HEIGHT+2;
+     
+    }
+	else if(foo.getstatus()== FOO_UP)
+	{
+		offSet=foo.getoffset()+15;
+		yoffset=foo.getyoffset()-BOMB_HEIGHT-2;
+		
+	}
+	else if (foo.getstatus() == FOO_DOWN)
+	{
+		offSet=foo.getoffset()+15;
+		yoffset=foo.getyoffset()+FOO_HEIGHT+2;
+		
+	}
+	}
+	
+
+
+}
+void Bomb::showbomb(){
+	//if(spacepressed)
+	if(counter<10)
+	apply_surface( offSet, yoffset, bomb, screen, &bombclip[ 0 ] );
+	if(counter>=10&&counter<20)
+	apply_surface( offSet, yoffset, bomb, screen, &bombclip[ 1 ] );
+	if(counter>=20&&counter<30)
+	apply_surface( offSet, yoffset, bomb, screen, &bombclip[ 2 ] );
+	if(counter>=30&&counter<32)
+		apply_surface( offSet, yoffset, bomb, screen, &bombclip[ 3 ] );
+}
+void Bomb::handle_events(){
+if( event.type == SDL_KEYDOWN )
+    {
+        //Set the velocity
+        switch( event.key.keysym.sym )
+        {
+            case SDLK_SPACE:spacepressed=1;
+		}
+    }
+}
 void Foo::handle_events()
 {
     //If a key was pressed
@@ -318,7 +433,8 @@ void Foo::handle_events()
             case SDLK_LEFT: velocity -= FOO_WIDTH /4; status=FOO_LEFT;break;
 			case SDLK_UP: yvelocity-=FOO_HEIGHT/4; status=FOO_UP;break;
 			case SDLK_DOWN: yvelocity +=FOO_HEIGHT/4; status=FOO_DOWN; break;
-        }
+			
+		}
     }
     //If a key was released
     else if( event.type == SDL_KEYUP )
@@ -476,7 +592,42 @@ void Foo::show()
 		apply_surface( offSet, yoffset, foo, screen, &clipsDown[ frame ] );
 	}
 }
+class bombvector
+{
+	vector<Bomb> bombvect;
+public:
+	void handle_events(Foo foo);
+	void makebombs(Foo foo);
+	void showbombs();
+};
+void bombvector::makebombs(Foo foo){
+	for(int i=0;i<bombvect.size();i++)
+	bombvect[i].makebomb(foo);
+}
+void bombvector::showbombs(){
+	for(int i=0;i<bombvect.size();i++)
+	bombvect[i].showbomb();
+}
+void bombvector::handle_events(Foo foo){
+	if( event.type == SDL_KEYDOWN )
+    {
+        //Set the velocity
+        if( event.key.keysym.sym==SDLK_SPACE ){
+        
+            Bomb bomb;
+			if(foo.getstatus()==FOO_RIGHT&&lvl->get_tile((foo.getyoffset()+FOO_HEIGHT-BOMB_HEIGHT+2)/64,(foo.getoffset()+FOO_WIDTH+BOMB_WIDTH)/64)==GROUND&&lvl->get_tile((foo.getyoffset()+FOO_HEIGHT-5)/64,(foo.getoffset()+FOO_WIDTH+BOMB_WIDTH)/64)==GROUND)
+			bombvect.push_back(bomb); 
+			if(foo.getstatus()==FOO_LEFT&&lvl->get_tile((foo.getyoffset()+FOO_HEIGHT-BOMB_HEIGHT+2)/64,(foo.getoffset()-(BOMB_WIDTH-10))/64)==GROUND&&lvl->get_tile((foo.getyoffset()+FOO_HEIGHT)/64,(foo.getoffset()-(BOMB_WIDTH-10))/64)==GROUND)
+			bombvect.push_back(bomb); 
+			if(foo.getstatus()==FOO_UP&&lvl->get_tile((foo.getyoffset()-BOMB_HEIGHT-2)/64,((foo.getoffset()+15)/64))==GROUND&&lvl->get_tile((foo.getyoffset()-BOMB_HEIGHT-2)/64,((foo.getoffset()+15+BOMB_WIDTH)/64))==GROUND)
+			bombvect.push_back(bomb); 
+			if(foo.getstatus()==FOO_DOWN&&lvl->get_tile((foo.getyoffset()+FOO_HEIGHT+2+BOMB_HEIGHT)/64,(foo.getoffset()+15)/64)==GROUND&&lvl->get_tile((foo.getyoffset()+FOO_HEIGHT+2+BOMB_HEIGHT)/64,(foo.getoffset()+15+BOMB_WIDTH)/64)==GROUND)
+			bombvect.push_back(bomb); 
 
+		}
+		
+    }
+}
 
 int main( int argc, char* args[] ) {
 	
@@ -543,8 +694,8 @@ int main( int argc, char* args[] ) {
     lvl->generate();
     
 	 Foo walk;
-    
-   
+     
+     bombvector bomb;
     
     //While the user hasn't quit
     while( quit == false )
@@ -554,6 +705,7 @@ int main( int argc, char* args[] ) {
         while( SDL_PollEvent( &event ) )
 		{
 			walk.handle_events();
+			bomb.handle_events(walk);
             //If the user has Xed out the window
             if( event.type == SDL_QUIT )
             {
@@ -561,8 +713,10 @@ int main( int argc, char* args[] ) {
                 quit = true;
             }
         }
+		
    walk.move();
-   
+  
+   bomb.makebombs(walk);
     SDL_FillRect( screen, &screen->clip_rect, SDL_MapRGB( screen->format, 0xFF, 0xFF, 0xFF ) );
 	
 	for(int i = 0; i < LEVEL_ROW; ++i) {
@@ -584,7 +738,7 @@ int main( int argc, char* args[] ) {
         }
         printf("\n");
     }
-	
+	bomb.showbombs();
 	 walk.show();
 	  if( SDL_Flip( screen ) == -1 )
         {
