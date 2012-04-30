@@ -7,8 +7,8 @@
 
 using namespace std;
 
-#define LEVEL_COL 11
-#define LEVEL_ROW 11
+#define LEVEL_COL 22
+#define LEVEL_ROW 22
 
 #define DESTROY_BLOCKS 20
 
@@ -35,6 +35,7 @@ public:
     void generate(); //Generates a random level
     
     Tile get_tile(int x, int y);
+	void set_tile(int x, int y);
     
     void update();
 };

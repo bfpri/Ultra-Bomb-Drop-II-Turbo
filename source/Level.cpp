@@ -66,3 +66,6 @@ void Level::update() { //This should be in the main game loop with SDL
 Tile Level::get_tile(int x, int y) {
     return board_data[y][x];
 }
+void Level::set_tile(int x, int y){
+	board_data[y][x]=GROUND;
+}
